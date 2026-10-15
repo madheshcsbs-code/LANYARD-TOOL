@@ -1,0 +1,114 @@
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import logo from "@/assets/unicard-logo.png";
+import { ShieldCheck } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { authService } from "@/services/authService";
+
+const AdminLogin = () => {
+  const navigate = useNavigate();
+  const { user, signIn } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      if (user.role === 'super-admin' || user.role === 'ultra-super-admin') {
+        navigate("/admin/dashboard");
+      }
+    }
+  }, [user, navigate]);
+
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+
+    const { error } = await signIn(email, password);
+    
+    if (error) {
+      toast.error(error as string);
+      setIsLoading(false);
+      return;
+    }
+
+    const storedUser = authService.getStoredUser();
+    if (!storedUser || (storedUser.role !== 'super-admin' && storedUser.role !== 'ultra-super-admin')) {
+      toast.error("Access denied. Admin privileges required.");
+      authService.logout();
+      setIsLoading(false);
+      return;
+    }
+
+    toast.success("Admin login successful!");
+    navigate("/admin/dashboard");
+    setIsLoading(false);
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center gradient-hero p-4">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <Link to="/">
+            <img src="/gotek-logo.png" alt="GOTEK Logo" className="h-20 mx-auto mb-2" />
+          </Link>
+          <p className="text-gray-700 font-bold mb-2">ID Card Cropping Tool</p>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <ShieldCheck className="w-6 h-6 text-primary" />
+            <h1 className="text-2xl font-bold">Admin Portal</h1>
+          </div>
+          <p className="text-muted-foreground">Manage orders and templates</p>
+        </div>
+
+        <Card className="border-2 shadow-xl">
+          <CardHeader>
+            <CardTitle>Admin Login</CardTitle>
+            <CardDescription>Access the admin dashboard</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="admin@gotek.com"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Logging in..." : "Login"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <div className="text-center mt-6">
+          <Link to="/" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+            ← Back to Home
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AdminLogin;
